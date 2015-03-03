@@ -5,7 +5,7 @@ use Code::TidyAll::Config::INI::Reader;
 use Code::TidyAll::Cache;
 use Code::TidyAll::CacheModel;
 use Code::TidyAll::Util
-  qw(abs2rel basename can_load dirname dump_one_line mkpath read_dir rel2abs tempdir_simple uniq);
+    qw(abs2rel basename can_load dirname dump_one_line mkpath read_dir rel2abs tempdir_simple uniq);
 use Code::TidyAll::Result;
 use Date::Format;
 use Digest::SHA1 qw(sha1_hex);
@@ -25,11 +25,13 @@ sub default_conf_names { ( 'tidyall.ini', '.tidyallrc' ) }
 
 # External
 has 'backup_ttl'        => ( is => 'ro', default => '1 hour' );
+has 'cache'             => ( is => 'lazy' );
+has 'cache_model_class' => ( is => 'ro', default => 'Code::TidyAll::CacheModel' );
 has 'check_only'        => ( is => 'ro' );
 has 'data_dir'          => ( is => 'lazy' );
 has 'iterations'        => ( is => 'ro', default => 1 );
 has 'list_only'         => ( is => 'ro' );
-has 'mode'              => ( is => 'ro', default =>  'cli'  );
+has 'mode'              => ( is => 'ro', default => 'cli' );
 has 'no_backups'        => ( is => 'ro' );
 has 'no_cache'          => ( is => 'ro' );
 has 'output_suffix'     => ( is => 'ro', default => q{} );
@@ -39,8 +41,6 @@ has 'recursive'         => ( is => 'ro' );
 has 'refresh_cache'     => ( is => 'ro' );
 has 'root_dir'          => ( is => 'ro', required => 1 );
 has 'verbose'           => ( is => 'ro' );
-has 'cache_model_class' => ( is => 'ro', default => 'Code::TidyAll::CacheModel' );
-has 'cache'             => ( is => 'lazy');
 
 # Internal
 has 'backup_dir'       => ( is => 'lazy', init_arg => undef, trigger => 1 );
@@ -89,13 +89,13 @@ sub _build_plugins_for_mode {
 
 sub _build_plugin_objects {
     my $self = shift;
-    my @plugin_objects =
-      map { $self->_load_plugin( $_, $self->plugins->{$_} ) } keys( %{ $self->plugins_for_mode } );
+    my @plugin_objects = map { $self->_load_plugin( $_, $self->plugins->{$_} ) }
+        keys( %{ $self->plugins_for_mode } );
 
     # Sort tidiers before validators, then alphabetical
     #
     return [ sort { ( $a->is_validator <=> $b->is_validator ) || ( $a->name cmp $b->name ) }
-          @plugin_objects ];
+            @plugin_objects ];
 }
 
 sub BUILD {
@@ -107,7 +107,7 @@ sub BUILD {
         die sprintf(
             "unknown constructor param%s %s for %s",
             @bad_params > 1 ? "s" : "",
-            join( ", ", sort map { "'$_'" } @bad_params ),
+            join( ", ", sort map {"'$_'"} @bad_params ),
             ref($self)
         );
     }
@@ -141,7 +141,7 @@ sub new_from_conf_file {
     }
 
     $class->msg( "constructing %s with these params: %s", $class, dump_one_line( \%params ) )
-      if ( $params{verbose} );
+        if ( $params{verbose} );
 
     return $class->new(%params);
 }
@@ -202,7 +202,7 @@ sub process_path {
 
     if ( -d $path ) {
         if ( $self->recursive ) {
-            return $self->process_paths( map { "$path/$_" } read_dir($path) );
+            return $self->process_paths( map {"$path/$_"} read_dir($path) );
         }
         else {
             return ( $self->_error_result( "$path: is a directory (try -r/--recursive)", $path ) );
@@ -230,10 +230,10 @@ sub process_file {
     }
 
     my $cache_model = $self->cache_model_for( $path, $full_path );
-    if ($self->refresh_cache) {
+    if ( $self->refresh_cache ) {
         $cache_model->remove;
     }
-    elsif ($cache_model->is_cached) {
+    elsif ( $cache_model->is_cached ) {
         $self->msg( "[cached] %s", $path ) if $self->verbose;
         return Code::TidyAll::Result->new( path => $path, state => 'cached' );
     }
@@ -242,6 +242,7 @@ sub process_file {
     my $result = $self->process_source( $contents, $path );
 
     if ( $result->state eq 'tidied' ) {
+
         # backup original contents
         $self->_backup_file( $path, $contents );
 
@@ -250,7 +251,7 @@ sub process_file {
         write_file( join( '', $full_path, $self->output_suffix ), $contents );
 
         # change the in memory contents of the cache (but don't update yet)
-        $cache_model->file_contents( $contents ) unless $self->output_suffix;
+        $cache_model->file_contents($contents) unless $self->output_suffix;
     }
 
     $cache_model->update if $result->ok;
@@ -258,12 +259,12 @@ sub process_file {
 }
 
 sub cache_model_for {
-    my ($self, $path, $full_path) = @_;
+    my ( $self, $path, $full_path ) = @_;
     return $self->cache_model_class->new(
-        path => $path,
-        full_path => $full_path,
+        path         => $path,
+        full_path    => $full_path,
         cache_engine => $self->no_cache ? undef : $self->cache,
-        base_sig => $self->base_sig,
+        base_sig     => $self->base_sig,
     );
 }
 
@@ -273,9 +274,10 @@ sub process_source {
     die "contents and path required" unless defined($contents) && defined($path);
     my @plugins = $self->plugins_for_path($path);
     if ( !@plugins ) {
-        $self->msg( "[no plugins apply%s] %s",
-            $self->mode ? " for mode '" . $self->mode . "'" : "", $path )
-          if $self->verbose;
+        $self->msg(
+            "[no plugins apply%s] %s",
+            $self->mode ? " for mode '" . $self->mode . "'" : "", $path
+        ) if $self->verbose;
         return Code::TidyAll::Result->new( path => $path, state => 'no_match' );
     }
 
@@ -306,8 +308,8 @@ sub process_source {
 
     if ( !$self->quiet || $error ) {
         my $status = $was_tidied ? "[tidied]  " : "[checked] ";
-        my $plugin_names =
-          $self->verbose ? sprintf( " (%s)", join( ", ", map { $_->name } @plugins ) ) : "";
+        my $plugin_names
+            = $self->verbose ? sprintf( " (%s)", join( ", ", map { $_->name } @plugins ) ) : "";
         $self->msg( "%s%s%s", $status, $path, $plugin_names );
     }
 
@@ -333,7 +335,7 @@ sub _read_conf_file {
     $conf_string =~ s/\$ROOT/$root_dir/g;
     my $conf_hash = Code::TidyAll::Config::INI::Reader->read_string($conf_string);
     die "'$conf_file' did not evaluate to a hash"
-      unless ( ref($conf_hash) eq 'HASH' );
+        unless ( ref($conf_hash) eq 'HASH' );
     return $conf_hash;
 }
 
@@ -383,7 +385,7 @@ sub find_conf_file {
     my $path1     = rel2abs($start_dir);
     my $path2     = realpath($start_dir);
     my $conf_file = $class->_find_conf_file_upward( $conf_names, $path1 )
-      || $class->_find_conf_file_upward( $conf_names, $path2 );
+        || $class->_find_conf_file_upward( $conf_names, $path2 );
     unless ( defined $conf_file ) {
         die sprintf(
             "could not find %s upwards from %s",
@@ -440,8 +442,8 @@ sub find_matched_files {
 sub plugins_for_path {
     my ( $self, $path ) = @_;
 
-    $self->{plugins_for_path}->{$path} ||=
-      [ grep { $_->matches_path($path) } @{ $self->plugin_objects } ];
+    $self->{plugins_for_path}->{$path}
+        ||= [ grep { $_->matches_path($path) } @{ $self->plugin_objects } ];
     return @{ $self->{plugins_for_path}->{$path} };
 }
 
@@ -464,7 +466,7 @@ sub _zglob {
 sub _small_path {
     my ( $self, $path ) = @_;
     die sprintf( "'%s' is not underneath root dir '%s'!", $path, $self->root_dir )
-      unless index( $path, $self->root_dir ) == 0;
+        unless index( $path, $self->root_dir ) == 0;
     return substr( $path, length( $self->root_dir ) + 1 );
 }
 
@@ -526,8 +528,7 @@ __END__
 
 =head1 DESCRIPTION
 
-This is the engine used by L<tidyall> - read that first to get an
-overview.
+This is the engine used by L<tidyall> - read that first to get an overview.
 
 You can call this API from your own program instead of executing C<tidyall>.
 
@@ -607,8 +608,8 @@ C<backup_ttl> here).
 =item process_paths (path, ...)
 
 Call L</process_file> on each file; descend recursively into each directory if
-the C<recursive> flag is on. Return a list of
-L<Code::TidyAll::Result> objects, one for each file.
+the C<recursive> flag is on. Return a list of L<Code::TidyAll::Result> objects,
+one for each file.
 
 =item process_file (file)
 
@@ -648,8 +649,8 @@ apply. Return a L<Code::TidyAll::Result> object.
 =item plugins_for_path (I<path>)
 
 Given a relative I<path> from the root, return a list of
-L<Code::TidyAll::Plugin> objects that apply to it, or an
-empty list if no plugins apply.
+L<Code::TidyAll::Plugin> objects that apply to it, or an empty list if no
+plugins apply.
 
 =item find_conf_file (I<conf_names>, I<start_dir>)
 

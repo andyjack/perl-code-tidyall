@@ -9,7 +9,7 @@ use File::Slurp::Tiny qw(read_file write_file);
 use Test::Class::Most parent => 'Code::TidyAll::Test::Class';
 use Code::TidyAll::CacheModel::Shared;
 
-sub test_plugin { "+Code::TidyAll::Test::Plugin::$_[0]" }
+sub test_plugin {"+Code::TidyAll::Test::Plugin::$_[0]"}
 my %UpperText  = ( test_plugin('UpperText')  => { select => '**/*.txt' } );
 my %ReverseFoo = ( test_plugin('ReverseFoo') => { select => '**/foo*' } );
 my %RepeatFoo  = ( test_plugin('RepeatFoo')  => { select => '**/foo*' } );
@@ -138,7 +138,7 @@ sub test_plugin_order_and_atomicity : Tests {
             %ReverseFoo,
             test_plugin("UpperText $_")  => { select => '**/*.txt' },
             test_plugin("CheckUpper $_") => { select => '**/*.txt' }
-          )
+            )
     } ( 1 .. 3 );
     my $output = capture_stdout {
         $self->tidy(
@@ -147,7 +147,7 @@ sub test_plugin_order_and_atomicity : Tests {
             source  => { "foo.txt" => "abc" },
             dest    => { "foo.txt" => "CBA" },
             like_output =>
-              qr/.*ReverseFoo, .*UpperText 1, .*UpperText 2, .*UpperText 3, .*CheckUpper 1, .*CheckUpper 2, .*CheckUpper 3/
+                qr/.*ReverseFoo, .*UpperText 1, .*UpperText 2, .*UpperText 3, .*CheckUpper 1, .*CheckUpper 2, .*CheckUpper 3/
         );
     };
 
@@ -183,7 +183,7 @@ sub test_quiet_and_verbose : Tests {
                 is( $output, "[tidied]  foo.txt\n" ) if $state eq 'normal';
                 is( $output, "" ) if $state eq 'quiet';
                 like( $output, qr/purging old backups/, "purging old backups ($state)" )
-                  if $state eq 'verbose';
+                    if $state eq 'verbose';
                 like(
                     $output,
                     qr/\[tidied\]  foo\.txt \(\+Code::TidyAll::Test::Plugin::UpperText\)/s,
@@ -211,26 +211,29 @@ sub test_caching_and_backups : Tests {
     my $self = shift;
 
     my @chi_or_no_chi = ('');
-    if (eval "use CHI; 1") {
+    if ( eval "use CHI; 1" ) {
         push @chi_or_no_chi, "chi";
     }
 
     foreach my $chi (@chi_or_no_chi) {
-        foreach my $cache_model_class (qw(
+        foreach my $cache_model_class (
+            qw(
             Code::TidyAll::CacheModel
             Code::TidyAll::CacheModel::Shared
-        )) {
+            )
+            ) {
             foreach my $no_cache ( 0 .. 1 ) {
                 foreach my $no_backups ( 0 .. 1 ) {
-                    my $desc     = "(no_cache=$no_cache, no_backups=$no_backups, model=$cache_model_class, cache_class=$chi)";
+                    my $desc
+                        = "(no_cache=$no_cache, no_backups=$no_backups, model=$cache_model_class, cache_class=$chi)";
                     my $root_dir = $self->create_dir( { "foo.txt" => "abc" } );
-                    my $ct       = Code::TidyAll->new(
-                        plugins  => {%UpperText},
-                        root_dir => $root_dir,
+                    my $ct = Code::TidyAll->new(
+                        plugins           => {%UpperText},
+                        root_dir          => $root_dir,
                         cache_model_class => $cache_model_class,
-                        ( $no_cache   ? ( no_cache   => 1 ) : () ),
-                        ( $no_backups ? ( no_backups => 1 ) : () ),
-                        ( $chi ? ( cache =>  _chi() ) : () ),
+                        ( $no_cache   ? ( no_cache   => 1 )      : () ),
+                        ( $no_backups ? ( no_backups => 1 )      : () ),
+                        ( $chi        ? ( cache      => _chi() ) : () ),
                     );
                     my $output;
                     my $file = "$root_dir/foo.txt";
@@ -275,7 +278,10 @@ sub test_caching_and_backups : Tests {
                         ok( @files == 0, "no backup files $desc" );
                     }
                     else {
-                        ok( scalar(@files) == 1 || scalar(@files) == 2, "1 or 2 backup files $desc" );
+                        ok(
+                            scalar(@files) == 1 || scalar(@files) == 2,
+                            "1 or 2 backup files $desc"
+                        );
                         foreach my $file (@files) {
                             like(
                                 $file,
@@ -310,8 +316,10 @@ sub test_selects_and_ignores : Tests {
         }
     );
     cmp_set( [ $ct->find_matched_files() ], [ "$root_dir/a/foo.pm", "$root_dir/b/foo.pl" ] );
-    cmp_deeply( [ map { $_->name } $ct->plugins_for_path("a/foo.pm") ],
-        [ test_plugin('UpperText') ] );
+    cmp_deeply(
+        [ map { $_->name } $ct->plugins_for_path("a/foo.pm") ],
+        [ test_plugin('UpperText') ]
+    );
 }
 
 sub test_dirs : Tests {
@@ -425,9 +433,7 @@ sub test_cli : Tests {
                 };
 
                 my ($params_msg)
-                    = ( $output
-                        =~ /constructing Code::TidyAll with these params:(.*)/
-                    );
+                    = ( $output =~ /constructing Code::TidyAll with these params:(.*)/ );
                 ok( defined($params_msg), "params msg" );
                 like( $params_msg, qr/backup_ttl => '15m'/, 'backup_ttl' );
                 like( $params_msg, qr/verbose => '?1'?/,    'verbose' );
@@ -451,7 +457,7 @@ sub test_cli : Tests {
                 my $cwd = realpath();
                 capture_stdout {
                     my $dir = pushd "$root_dir/subdir";
-                    system($^X, "-I$cwd/lib", "-I$cwd/t/lib", "$cwd/bin/tidyall", 'foo.txt');
+                    system( $^X, "-I$cwd/lib", "-I$cwd/t/lib", "$cwd/bin/tidyall", 'foo.txt' );
                 };
                 is(
                     read_file("$root_dir/subdir/foo.txt"), "BYEBYEBYE",
